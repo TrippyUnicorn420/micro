@@ -1,3 +1,5 @@
+import Text.Printf
+
 -- Type representing text Editor
 -- There are three strings that are concatenated when printed for user to view:
 -- stringBeforeCursor is all characters before the current cursor position, cursor is the | character
@@ -12,7 +14,7 @@ data TELine = TELine
 
 main :: IO()
 main = do
-    putStrLn ("Welcome to Micro. When you wish to exit, please press the escape key.")
+    putStrLn ("Welcome to Micro. When you wish to exit, please press Ctrl+X. To save, please press Ctrl+S.")
     -- Intital Text editor, with only cursor at the start
     let currentLine = TELine "" "|" "" 120
         in do 
@@ -25,7 +27,8 @@ main = do
 printEditorView :: TELine -> IO()
 printEditorView editorView = do
     -- Want to clear the terminal at this point - can we use the System.Console.ANSI? Can't seem to find any built-in ways to do this.
-    putStrLn ("\n" ++ stringBeforeCursor editorView ++ cursor editorView ++ stringAfterCursor editorView)
+    -- solved using printf instead of putstrln, and changing \n to \r
+    printf ("\r" ++ stringBeforeCursor editorView ++ cursor editorView ++ stringAfterCursor editorView)
 
 appendToLine :: IO TELine -> IO TELine
 appendToLine line =
@@ -33,7 +36,7 @@ appendToLine line =
     >>= \line ->
         getnewInput
         >>= \nextchar ->
-            if (nextchar == '\ESC')
+            if (nextchar == '\^X')
                 then pure line
             else 
                 if ((charspaceleft line) == 0) then
@@ -45,6 +48,11 @@ appendToLine line =
                 else if (nextchar == '\n') then
                     do
                         newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) (cursor line) (stringAfterCursor line) (120))
+                        printEditorView newline
+                        appendToLine (pure newline)
+                else if (nextchar == '\^H') then -- for backspace - this kind of works
+                    do
+                        newline <- pure (TELine (appendChar nextchar (shave (stringBeforeCursor line))) (cursor line) (stringAfterCursor line) (120))
                         printEditorView newline
                         appendToLine (pure newline)
                 else
@@ -67,3 +75,9 @@ appendChar nextchar line = line ++ charToString nextchar
 
 charToString :: Char -> String
 charToString = (:[])
+
+-- trying to make backspace work
+shave :: [a] -> [a]
+shave [] = []
+shave [h]    = []
+shave (h:t)  =[h]++shave t
