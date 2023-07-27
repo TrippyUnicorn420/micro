@@ -11,7 +11,7 @@ main :: IO()
 main = do
     putStrLn ("Welcome to Micro. When you wish to exit, please press the escape key.")
     let currentLine = TELine "" 120
-        in getnewInput currentLine
+        in print (appendToLine currentLine)
     putStrLn ("Thank you for using Micro.")
 
 appendToLine :: TELine -> TELine
@@ -24,13 +24,10 @@ appendToLine line =
                 --getnewInput (appendChar nextchar line)
                 appendToLine (appendChar nextchar line)
 
-getnewInput :: IO() -> Char
+getnewInput :: IO Char
 getnewInput = do 
     nextchar <- getChar
     return nextchar
 
-appendChar :: Char -> TELine -> TELine
-appendChar nextchar line = TELine ((contents line) ++ (charToString nextchar)) ((charspaceleft line) - 1)
-
-charToString :: Char -> String
-charToString = (:[])
+appendChar :: IO Char -> TELine -> TELine
+appendChar nextchar line = TELine ((contents line):nextchar) ((charspaceleft line) - 1)
