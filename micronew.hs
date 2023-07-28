@@ -21,13 +21,14 @@ main = do
             printEditorView currentLine
             editorView <- appendToLine (pure currentLine)
             printEditorView editorView
-    putStrLn ("Thank you for using Micro.")
+    putStrLn ("\n" ++ "Thank you for using Micro.")
 
 -- Prints the current contents of the TELine that user should see (strings only)
 printEditorView :: TELine -> IO()
 printEditorView editorView = do
     -- Want to clear the terminal at this point - can we use the System.Console.ANSI? Can't seem to find any built-in ways to do this.
     -- solved using printf instead of putstrln, and changing \n to \r
+    -- \r is only working for one line- when you go over one line, the first line gets repeated, so it doesn't clear the whole terminal, only a line
     printf ("\r" ++ stringBeforeCursor editorView ++ cursor editorView ++ stringAfterCursor editorView)
 
 appendToLine :: IO TELine -> IO TELine
@@ -50,9 +51,9 @@ appendToLine line =
                         newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) (cursor line) (stringAfterCursor line) (120))
                         printEditorView newline
                         appendToLine (pure newline)
-                else if (nextchar == '\^H') then -- for backspace - this kind of works
+                else if (nextchar == '\DEL') then -- for backspace
                     do
-                        newline <- pure (TELine (appendChar nextchar (shave (stringBeforeCursor line))) (cursor line) (stringAfterCursor line) (120))
+                        newline <- pure (TELine (shave (stringBeforeCursor line)) (cursor line) (stringAfterCursor line) (charspaceleft line + 1))
                         printEditorView newline
                         appendToLine (pure newline)
                 else
