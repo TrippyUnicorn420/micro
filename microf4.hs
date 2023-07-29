@@ -1,4 +1,5 @@
 import Text.Printf
+import System.IO
 
 -- Type representing text Editor
 -- There are three strings that are concatenated when printed for user to view:
@@ -21,7 +22,7 @@ data TextFormat = TextFormat
 
 main :: IO()
 main = do
-    putStrLn ("Welcome to Micro. When you wish to exit, please press Ctrl+X. To save, please press Ctrl+S.")
+    putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
     -- Intital Text editor, with only cursor at the start
     let currentLine = TELine "" "|" ""
         in do 
@@ -80,6 +81,8 @@ appendToLine line =
         >>= \nextchar ->
             if (nextchar == '\^X')
                 then pure line
+            else if  (nextchar == '\^S')
+                then save getFullText 
             else 
                 if (nextchar == '\n') then
                     do
@@ -97,6 +100,13 @@ appendToLine line =
                         newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) (cursor line) (stringAfterCursor line))
                         printEditorView newline
                         appendToLine (pure newline)
+
+save :: TELine -> IO ()
+save line = do
+    let formattedText = formatTELine line 
+        in 
+            (textContents formattedText)
+        
 
 getnewInput :: IO Char
 getnewInput = do 
