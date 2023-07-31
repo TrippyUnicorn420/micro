@@ -40,6 +40,11 @@ printEditorView editorView = do
     let view = (formatTELine editorView) in
         putStrLn (view)
 
+checkingPrint :: TELine -> IO()
+checkingPrint editorView = do
+    putStr("\n")
+    print(formatting (TextFormat "" 0 "" 0 (stringBeforeCursor editorView ++ stringAfterCursor editorView) 0 (cursorPos editorView) True))
+
 formatTELine :: TELine -> String
 formatTELine editorView = textContents (formatting (TextFormat "" 0 "" 0 (stringBeforeCursor editorView ++ stringAfterCursor editorView) 0 (cursorPos editorView) True))
 
@@ -68,6 +73,8 @@ formatting te = do
                     formatting (TextFormat "" 0 (formatted ++ word ++ "\n") 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
                 else
                     formatting (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
+            else if (newChar == "\n") then
+                formatting (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
             else if (newWLength == 120) then
                 -- slight issue with out by one error here with up arrow, but probably can leave it
                 --add the current portion of the word, and a new line character
@@ -143,6 +150,7 @@ appendToLine line =
                 if (nextchar == '\n') then
                     do
                         newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) ((cursorPos line) + 1) (stringAfterCursor line))
+                        --checkingPrint(newline)
                         printEditorView newline
                         appendToLine (pure newline)
                 else if (nextchar == '\DEL') then -- for backspace
@@ -199,6 +207,16 @@ appendToLine line =
                                                     newline <- pure (TELine (take newCursorPos (stringBeforeCursor line)) (toInteger newCursorPos) (stringToMove ++ (stringAfterCursor line)))
                                                     printEditorView newline
                                                     appendToLine (pure newline)
+                                        else if (numberchar == 'D') then
+                                            if (cursorPos line == 0) then do
+                                                newline <- pure line
+                                                printEditorView newline
+                                                appendToLine (pure newline)
+                                            else do
+                                                let charToMove = take 1 (reverse (stringBeforeCursor line))
+                                                newline <- pure (TELine (init (stringBeforeCursor line)) ((cursorPos line) - 1) (charToMove ++ (stringAfterCursor line)))
+                                                printEditorView newline
+                                                appendToLine (pure newline)
                                         else
                                             do
                                                 newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) ((cursorPos line) + 1) (stringAfterCursor line))
