@@ -217,6 +217,17 @@ appendToLine line =
                                                 newline <- pure (TELine (init (stringBeforeCursor line)) ((cursorPos line) - 1) (charToMove ++ (stringAfterCursor line)))
                                                 printEditorView newline
                                                 appendToLine (pure newline)
+                                        else if (numberchar == 'C') then do
+                                            let endOfText = totalCharsParsed (formatting (TextFormat "" 0 "" 0 (stringBeforeCursor line ++ stringAfterCursor line) 0 (cursorPos line) True))
+                                            if (cursorPos line == endOfText) then do
+                                                newline <- pure line
+                                                printEditorView newline
+                                                appendToLine (pure newline)
+                                            else do
+                                                let charToMove = take 1 (stringAfterCursor line)
+                                                newline <- pure (TELine ((stringBeforeCursor line) ++ charToMove) ((cursorPos line) + 1) (tail (stringAfterCursor line)))
+                                                printEditorView newline
+                                                appendToLine (pure newline)
                                         else
                                             do
                                                 newline <- pure (TELine (appendChar nextchar (stringBeforeCursor line)) ((cursorPos line) + 1) (stringAfterCursor line))
