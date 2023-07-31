@@ -1,4 +1,7 @@
+{-# LANGUAGE BlockArguments #-}
 import Text.Printf
+import System.IO
+import Control.Exception
 
 -- Type representing text Editor
 -- There are three strings that are concatenated when printed for user to view:
@@ -24,7 +27,7 @@ data TextFormat = TextFormat
 
 main :: IO()
 main = do
-    putStrLn ("Welcome to Micro. When you wish to exit, please press Ctrl+X. To save, please press Ctrl+S.")
+    putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
     -- Intital Text editor, with only cursor at the start
     let currentLine = TELine "" 0 ""
         in do 
@@ -250,6 +253,31 @@ checkCursorDelete cursor =
         cursor
     else
         cursor - 1
+
+save :: TELine -> IO ()
+save line = do
+    saveHandle <- getAndOpenFile "Save to: " WriteMode
+    let formattedText = formatTELine line 
+        in 
+            hPutStr saveHandle formattedText
+    hClose saveHandle
+    putStrLn ("saved")
+
+load :: IO () -> IO TELine
+load path = do
+    loadHandle <- getAndOpenFile "Enter file name: " ReadMode
+    contents <- hGetContents loadHandle
+    hClose loadHandle
+    return (TELine contents "|" "")
+
+-- "adapted" from a Haskell tutorial
+getAndOpenFile :: String -> IOMode -> IO Handle
+getAndOpenFile prompt mode =
+    do putStr prompt
+       name <- getLine
+       catch (openFile name mode)
+             (\_ -> do putStrLn ("Cannot open "++ name ++ "\n")
+                       getAndOpenFile prompt mode)
 
 getnewInput :: IO Char
 getnewInput = do 
