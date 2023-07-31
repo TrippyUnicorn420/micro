@@ -64,11 +64,12 @@ formatting te = do
             let newWLength = wLength + 1
             -- If a space, it means the word is finished
             if (newChar == " ") then
-                if (fLength + newWLength > 120) then
+                if (fLength + newWLength >= 120) then
                     formatting (TextFormat "" 0 (formatted ++ word ++ "\n") 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
                 else
                     formatting (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
             else if (newWLength == 120) then
+                -- slight issue with out by one error here with up arrow, but probably can leave it
                 --add the current portion of the word, and a new line character
                 formatting (TextFormat "" 0 (formatted ++ word ++ newChar ++ "\n") 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted)
             else if (fLength + newWLength > 120) then
@@ -104,7 +105,7 @@ getCurrColumn currentPos currLine lineLengths = currentPos - (getTotals 0 (currL
 -- Finds total number of characters in specified number of lines
 getTotals :: Int -> Int -> [Int] -> Int
 getTotals total line listLines =
-    -- If line is negative (i.e. case where we are going from line 1 to line 0)
+    -- If line is negative (i.e. case where we are going from line 1 to line)
     if (line < 0) then
         total
     else
