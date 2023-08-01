@@ -191,7 +191,7 @@ appendToLine line =
             else if (nextchar == '\^W') then 
                 do
                     save (formatForSave line)
-                    pure line
+                    appendToLine(pure line)
             else if (nextchar == '\^O') then 
                 do
                     newline <- load
