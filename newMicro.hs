@@ -40,8 +40,9 @@ main = do
 printEditorView :: TELine -> IO()
 printEditorView editorView = do
     putStr("\n")
-    let view = (formatTELine editorView) in
-        putStrLn (view)
+    let view = (formatTELine editorView)
+    printf("\ESC[2J\ESC[H\ESC[0;0f")
+    putStrLn (view)
 
 checkingPrint :: TELine -> IO()
 checkingPrint editorView = do
@@ -149,6 +150,15 @@ appendToLine line =
         >>= \nextchar ->
             if (nextchar == '\^X')
                 then pure line
+            else if (nextchar == '\^W') then 
+                do
+                    save (formatTELine line)
+                    pure line
+            else if (nextchar == '\^O') then 
+                do
+                    newline <- load
+                    printEditorView newline
+                    appendToLine (pure newline)
             else 
                 if (nextchar == '\n') then
                     do
@@ -254,30 +264,34 @@ checkCursorDelete cursor =
     else
         cursor - 1
 
-save :: TELine -> IO ()
+save :: String -> IO ()
 save line = do
     saveHandle <- getAndOpenFile "Save to: " WriteMode
-    let formattedText = formatTELine line 
+    let formattedText = line 
         in 
             hPutStr saveHandle formattedText
     hClose saveHandle
     putStrLn ("saved")
 
-load :: IO () -> IO TELine
-load path = do
+load :: IO TELine
+load = do
     loadHandle <- getAndOpenFile "Enter file name: " ReadMode
     contents <- hGetContents loadHandle
-    hClose loadHandle
-    return (TELine contents "|" "")
+    -- hClose loadHandle
+    return (TELine "" 0 contents)
 
 -- "adapted" from a Haskell tutorial
 getAndOpenFile :: String -> IOMode -> IO Handle
 getAndOpenFile prompt mode =
-    do putStr prompt
-       name <- getLine
-       catch (openFile name mode)
-             (\_ -> do putStrLn ("Cannot open "++ name ++ "\n")
-                       getAndOpenFile prompt mode)
+    do
+        putStr prompt
+        name <- getLine
+        catch
+            (openFile name mode)
+            (\(_ :: IOError) ->
+                do
+                    putStrLn ("Cannot open " ++ name ++ ", creating new file\n")
+                    openFile name WriteMode)
 
 getnewInput :: IO Char
 getnewInput = do 
