@@ -27,7 +27,6 @@ data TextFormat = TextFormat
 
 main :: IO()
 main = do
-    putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
     -- Intital Text editor, with only cursor at the start
     let currentLine = TELine "" 0 ""
         in do 
@@ -42,6 +41,8 @@ printEditorView editorView = do
     putStr("\n")
     let view = (formatTELine editorView)
     printf("\ESC[2J\ESC[H\ESC[0;0f")
+    putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
+    putStrLn ("#######################################################################################################################")
     putStrLn (view)
 
 checkingPrint :: TELine -> IO()
@@ -51,6 +52,9 @@ checkingPrint editorView = do
 
 formatTELine :: TELine -> String
 formatTELine editorView = textContents (formatting (TextFormat "" 0 "" 0 (stringBeforeCursor editorView ++ stringAfterCursor editorView) 0 (cursorPos editorView) True))
+
+formatForSave :: TELine -> String
+formatForSave editorView = textContents (saveFormat (TextFormat "" 0 "" 0 (stringBeforeCursor editorView ++ stringAfterCursor editorView) 0 (cursorPos editorView) True))
 
 -- Need formatting function:
 formatting :: TextFormat -> TextFormat
@@ -92,6 +96,40 @@ formatting te = do
         else
             TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted
 
+saveFormat :: TextFormat -> TextFormat
+saveFormat te = do
+    let word = (currWord te)
+    let wLength = (currWordLength te)
+    let formatted = (textContents te)
+    let fLength = (currTextLength te)
+    let toFormat = (textToFormat te)
+    let totalParsed = (totalCharsParsed te)
+    let isNotPrinted = (cursorToPrint te)
+    -- if there is still stuff to format
+    if (toFormat /= "") then do
+        -- Get next character
+        let newChar = take 1 toFormat
+        let newWLength = wLength + 1
+        -- If a space, it means the word is finished
+        if (newChar == " ") then
+            if (fLength + newWLength >= 120) then
+                saveFormat (TextFormat "" 0 (formatted ++ word) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+            else
+                saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+        else if (newChar == "\n") then
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+        else if (newWLength == 120) then
+            -- slight issue with out by one error here with up arrow, but probably can leave it
+            --add the current portion of the word, and a new line character
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar ++ "\n") 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+        else if (fLength + newWLength > 120) then
+            --add newline to the printText, keep word the same
+            saveFormat (TextFormat (word ++ newChar) newWLength (formatted) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+        else
+            -- add new character to word, keep going
+            saveFormat (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+    else
+        TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed 0 isNotPrinted
 
 wordLengths :: [String] -> [Int]
 wordLengths = map length
@@ -152,7 +190,7 @@ appendToLine line =
                 then pure line
             else if (nextchar == '\^W') then 
                 do
-                    save (formatTELine line)
+                    save (formatForSave line)
                     pure line
             else if (nextchar == '\^O') then 
                 do
