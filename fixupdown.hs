@@ -208,6 +208,12 @@ removeCharLeft text cursorPos totalChar = (init (take cursorPos text)) ++ (rever
 removeCharRight :: String -> Int -> Int -> String
 removeCharRight text cursorPos totalChar = (take cursorPos text) ++ (tail (reverse (take (totalChar - cursorPos) (reverse text))))
 
+deleteHighlight :: String -> Int -> Int -> Int -> String
+deleteHighlight text lbPos rbPos totalChar = (take lbPos text) ++ (reverse (take (totalChar - rbPos) (reverse text)))
+
+replaceHighlight :: Char -> String -> Int -> Int -> Int -> String
+replaceHighlight toAdd text lbPos rbPos totalChar = (take lbPos text) ++ (charToString toAdd) ++ (reverse (take (totalChar - rbPos) (reverse text)))
+
 -- Returns number of characters before cursor a line up
 -- E.g. upCursorPos 2 50 [90, 20, 80] returns (90 + min (50, 20)) = 110
 upCursorPos :: Int -> Int -> [Int] -> Int
@@ -237,13 +243,23 @@ appendToLine line =
                     appendToLine (pure newline)
             else 
                 if (nextchar == '\n') then
-                    do
+                    -- If text is highlighted, replace it with this character
+                    if (leftBrackPos line /= rightBrackPos line) then do
+                        newline <- pure (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
+                        printEditorView newline
+                        appendToLine (pure newline)
+                    else do
                         newline <- pure (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
                         --checkingPrintFormat(newline)
                         printEditorView newline
                         appendToLine (pure newline)
                 else if (nextchar == '\DEL') then -- for backspace
-                    if ((cursorPos line) == 0) then do
+                    -- If text is highlighted, delete the highlighted section
+                    if (leftBrackPos line /= rightBrackPos line) then do
+                        newline <- pure (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
+                        printEditorView newline
+                        appendToLine (pure newline)
+                    else if ((cursorPos line) == 0) then do
                         newline <- pure line
                         printEditorView newline
                         appendToLine (pure newline)
@@ -265,8 +281,13 @@ appendToLine line =
                                                 >>= \squigglechar ->
                                                     -- If delete key is pressed
                                                     if (squigglechar == '~') then
+                                                        -- If there is text highlighted, remove it
+                                                        if (leftBrackPos line /= rightBrackPos line) then do
+                                                            newline <- pure (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
+                                                            printEditorView newline
+                                                            appendToLine (pure newline)
                                                         -- If nothing after cursor, don't do anything
-                                                        if ((cursorPos line) == (charTotal line)) then do
+                                                        else if ((cursorPos line) == (charTotal line)) then do
                                                             newline <- pure line
                                                             printEditorView newline
                                                             appendToLine (pure newline)
@@ -408,7 +429,7 @@ appendToLine line =
                                                                                     -- Find column that cursor is currently on
                                                                                     let currColumn = getCurrColumn oldCursorPos currLine listLen
                                                                                     -- Get new cursor position
-                                                                                    let newCursorPos = downCursorPos currLine currColumn listLen
+                                                                                    let newCursorPos = min (charTotal line) (downCursorPos currLine currColumn listLen)
                                                                                     let pivot = pivotHighlight line
                                                                                     let lb = leftBrackPos line
                                                                                     let rb = rightBrackPos line
@@ -539,7 +560,12 @@ appendToLine line =
                                     printEditorView newline
                                     appendToLine (pure newline)
                 else
-                    do
+                    -- If text is highlighted, replace it with this character
+                    if (leftBrackPos line /= rightBrackPos line) then do
+                        newline <- pure (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
+                        printEditorView newline
+                        appendToLine (pure newline)
+                    else do
                         newline <- pure (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
                         printEditorView newline
                         appendToLine (pure newline)
