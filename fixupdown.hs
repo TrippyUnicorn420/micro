@@ -61,6 +61,10 @@ checkingPrintFormat editorView = do
 formatTELine :: TELine -> String
 formatTELine editorView = textContents (formatting (TextFormat "" 0 "" 0 (contents editorView) 0 (cursorPos editorView) True (leftBrackPos editorView) True (rightBrackPos editorView) True))
 
+formatForSave :: TELine -> String
+formatForSave editorView = textContents (saveFormat (TextFormat "" 0 "" 0 (contents editorView) 0 (cursorPos editorView) True (leftBrackPos editorView) True (rightBrackPos editorView) True))
+
+
 -- Need formatting function:
 formatting :: TextFormat -> TextFormat
 formatting te = do
@@ -153,6 +157,35 @@ upDownFormatting te = do
     else
         TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
 
+saveFormat :: TextFormat -> TextFormat
+saveFormat te = do
+    let word = (currWord te)
+    let wLength = (currWordLength te)
+    let formatted = (textContents te)
+    let fLength = (currTextLength te)
+    let toFormat = (textToFormat te)
+    let totalParsed = (totalCharsParsed te)
+    let cursor = (currCursorPos te)
+    let isNotPrinted = (cursorToPrint te)
+    let lb = (lbPos te)
+    let lbNotPrinted = (lbToPrint te)
+    let rb = (rbPos te)
+    let rbNotPrinted = (rbToPrint te)
+    if (toFormat /= "") then do
+        -- Get next character
+        let newChar = take 1 toFormat
+        let newWLength = wLength + 1
+        -- If a space, it means the word is finished
+        if (newChar == " ") then
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+        else if (newChar == "\n") then
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+        else
+            -- add new character to word, keep going
+            saveFormat (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+    else
+        TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
+
 
 wordLengths :: [String] -> [Int]
 wordLengths = map length
@@ -234,7 +267,7 @@ appendToLine line =
                 then pure line
             else if (nextchar == '\^W') then 
                 do
-                    save (formatTELine line)
+                    save (formatForSave line)
                     pure line
             else if (nextchar == '\^O') then 
                 do
