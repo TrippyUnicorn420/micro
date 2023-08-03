@@ -112,19 +112,13 @@ saveFormat te = do
         let newWLength = wLength + 1
         -- If a space, it means the word is finished
         if (newChar == " ") then
-            if (fLength + newWLength >= 120) then
-                saveFormat (TextFormat "" 0 (formatted ++ word) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
-            else
-                saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
         else if (newChar == "\n") then
             saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
         else if (newWLength == 120) then
             -- slight issue with out by one error here with up arrow, but probably can leave it
             --add the current portion of the word, and a new line character
             saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar ++ "\n") 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
-        else if (fLength + newWLength > 120) then
-            --add newline to the printText, keep word the same
-            saveFormat (TextFormat (word ++ newChar) newWLength (formatted) 0 (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
         else
             -- add new character to word, keep going
             saveFormat (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) 0 isNotPrinted)
@@ -191,7 +185,7 @@ appendToLine line =
             else if (nextchar == '\^W') then 
                 do
                     save (formatForSave line)
-                    pure line
+                    appendToLine(pure line)
             else if (nextchar == '\^O') then 
                 do
                     newline <- load
