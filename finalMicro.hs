@@ -405,6 +405,36 @@ appendToLine line =
                         printEditorView newline
                         appendToLine (pure newline)
 
+saveFormat :: TextFormat -> TextFormat
+saveFormat te = do
+    let word = (currWord te)
+    let wLength = (currWordLength te)
+    let formatted = (textContents te)
+    let fLength = (currTextLength te)
+    let toFormat = (textToFormat te)
+    let totalParsed = (totalCharsParsed te)
+    let cursor = (currCursorPos te)
+    let isNotPrinted = (cursorToPrint te)
+    let lb = (lbPos te)
+    let lbNotPrinted = (lbToPrint te)
+    let rb = (rbPos te)
+    let rbNotPrinted = (rbToPrint te)
+    if (toFormat /= "") then do
+        -- Get next character
+        let newChar = take 1 toFormat
+        let newWLength = wLength + 1
+        -- If a space, it means the word is finished
+        if (newChar == " ") then
+            formatting (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+        else if (newChar == "\n") then
+            formatting (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+        else
+            -- add new character to word, keep going
+            formatting (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+    else
+        TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
+
+
 checkCursorDelete :: Int -> Int
 checkCursorDelete cursor = 
     if (cursor == 0) then
