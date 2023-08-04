@@ -3,8 +3,8 @@ import Text.Printf
 import System.IO
 import Control.Exception
 
- 
-data TELine = TELine 
+
+data TELine = TELine
     { contents :: String
     , cursorPos :: Int
     , charTotal :: Int
@@ -28,13 +28,13 @@ data TextFormat = TextFormat
     , rbToPrint :: Bool
     } deriving Show
 
-
 main :: IO()
 main = do
     putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
     -- Intital Text editor, with only cursor at the start
-    let currentLine = TELine "" 0 0 0 0 0
-        in do 
+    let lol = (TELine "" 0 0 0 0 0): []
+    let currentLine = head lol
+        in do
             printEditorView currentLine
             editorView <- appendToLine (pure currentLine)
             printEditorView editorView
@@ -43,20 +43,20 @@ main = do
 -- Prints the current contents of the TELine that user should see (strings only)
 printEditorView :: TELine -> IO()
 printEditorView editorView = do
-    putStr("\n")
-    let view = (formatTELine editorView)
-    printf("\ESC[2J\ESC[H\ESC[0;0f")
+    putStr ("\n")
+    let view = formatTELine editorView
+    printf ("\ESC[2J\ESC[H\ESC[0;0f")
     putStrLn (view)
 
 checkingPrintTELine :: TELine -> IO()
 checkingPrintTELine editorView = do
-    putStr("\n")
+    putStr ("\n")
     print editorView
 
-checkingPrintFormat :: TELine -> IO()
-checkingPrintFormat editorView = do
-    putStr("\n")
-    print(formatting (TextFormat "" 0 "" 0 (contents editorView) 0 (cursorPos editorView) True (leftBrackPos editorView) True (rightBrackPos editorView) True))
+-- checkingPrintFormat :: TELine -> IO()
+-- checkingPrintFormat editorView = do
+--     putStr ("\n")
+--     print (formatting (TextFormat "" 0 "" 0 (contents editorView) 0 (cursorPos editorView) True (leftBrackPos editorView) True (rightBrackPos editorView) True))
 
 formatTELine :: TELine -> String
 formatTELine editorView = textContents (formatting (TextFormat "" 0 "" 0 (contents editorView) 0 (cursorPos editorView) True (leftBrackPos editorView) True (rightBrackPos editorView) True))
@@ -66,8 +66,60 @@ formatForSave editorView = textContents (saveFormat (TextFormat "" 0 "" 0 (conte
 
 
 -- Need formatting function:
-formatting :: TextFormat -> TextFormat
-formatting te = do
+-- Assuming 'lol' is a list of TELine elements outside the scope of the function
+formatting :: [TELine] -> TextFormat -> ([TELine], TextFormat)
+formatting lol te = do
+    let word = currWord te
+    let wLength = currWordLength te
+    let formatted = textContents te
+    let fLength = currTextLength te
+    let toFormat = textToFormat te
+    let totalParsed = totalCharsParsed te
+    let cursor = currCursorPos te
+    let isNotPrinted = cursorToPrint te
+    let lb = lbPos te
+    let lbNotPrinted = lbToPrint te
+    let rb = rbPos te
+    let rbNotPrinted = rbToPrint te
+    if (totalParsed == lb && lb /= rb && lbNotPrinted) then
+        formatting lol (TextFormat (word ++ "[") wLength formatted fLength toFormat totalParsed cursor isNotPrinted lb False rb rbNotPrinted)
+    else if (totalParsed == rb && lb /= rb && rbNotPrinted) then
+        formatting lol (TextFormat (word ++ "]") wLength formatted fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb False)
+    else if (totalParsed == cursor && isNotPrinted) then
+        formatting lol (TextFormat (word ++ "|") wLength formatted fLength toFormat totalParsed cursor False lb lbNotPrinted rb rbNotPrinted)
+    else
+        -- if there is still stuff to format
+        if (toFormat /= "") then do
+            -- Get next character
+            let newChar = take 1 toFormat
+            let newWLength = wLength + 1
+
+            -- If a space, it means the word is finished
+            if (newChar == " ") then
+                if (fLength + newWLength >= 120) then
+                    formatting (lol ++ [TELine (formatted ++ word ++ "\n") 0 (fLength + newWLength) 0 0 0]) (TextFormat "" 0 "" 0 (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+                else
+                    formatting lol (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+            else if (newChar == "\n") then
+                formatting lol (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+            else if (newWLength == 121) then
+                -- slight issue with out by one error here with up arrow, but probably can leave it
+                --add the current portion of the word, and a new line character
+                formatting (lol ++ [TELine (formatted ++ (tail (word)) ++ "\n") 0 1 0 0 0]) (TextFormat newChar 1 "" 0 (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+            else if (fLength + newWLength > 120) then
+                --add newline to the printText, keep word the same
+                formatting (lol ++ [TELine (formatted ++ "\n") 0 0 0 0 0]) (TextFormat (word ++ newChar) newWLength "" 0 (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+            else
+                -- add new character to word, keep going
+                formatting lol (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor True lb lbNotPrinted rb rbNotPrinted)
+        else
+            (lol, TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor True lb lbNotPrinted rb rbNotPrinted)
+
+
+
+
+saveFormat :: TextFormat -> TextFormat
+saveFormat te = do
     let word = (currWord te)
     let wLength = (currWordLength te)
     let formatted = (textContents te)
@@ -80,38 +132,20 @@ formatting te = do
     let lbNotPrinted = (lbToPrint te)
     let rb = (rbPos te)
     let rbNotPrinted = (rbToPrint te)
-    if (totalParsed == lb && lb /= rb && lbNotPrinted) then
-        formatting (TextFormat (word ++ "[") wLength formatted fLength toFormat totalParsed cursor isNotPrinted lb False rb rbNotPrinted)
-    else if (totalParsed == rb && lb /= rb && rbNotPrinted) then
-        formatting (TextFormat (word ++ "]") wLength formatted fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb False)
-    else if (totalParsed == cursor && isNotPrinted) then
-        formatting (TextFormat (word ++ "|") wLength formatted fLength toFormat totalParsed cursor False lb lbNotPrinted rb rbNotPrinted)
-    else
-        -- if there is still stuff to format
-        if (toFormat /= "") then do
-            -- Get next character
-            let newChar = take 1 toFormat
-            let newWLength = wLength + 1
-            -- If a space, it means the word is finished
-            if (newChar == " ") then
-                if (fLength + newWLength >= 120) then
-                    formatting (TextFormat "" 0 (formatted ++ word ++ "\n") 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-                else
-                    formatting (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-            else if (newChar == "\n") then
-                formatting (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-            else if (newWLength == 121) then
-                -- slight issue with out by one error here with up arrow, but probably can leave it
-                --add the current portion of the word, and a new line character
-                formatting (TextFormat newChar 1 (formatted ++ word ++ "\n") 1 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-            else if (fLength + newWLength > 120) then
-                --add newline to the printText, keep word the same
-                formatting (TextFormat (word ++ newChar) newWLength (formatted ++ "\n") 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-            else
-                -- add new character to word, keep going
-                formatting (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+    if (toFormat /= "") then do
+        -- Get next character
+        let newChar = take 1 toFormat
+        let newWLength = wLength + 1
+        -- If a space, it means the word is finished
+        if (newChar == " ") then
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+        else if (newChar == "\n") then
+            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
         else
-            TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
+            -- add new character to word, keep going
+            saveFormat (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
+    else
+        TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
 
 upDownFormatting :: TextFormat -> TextFormat
 upDownFormatting te = do
@@ -156,36 +190,6 @@ upDownFormatting te = do
             upDownFormatting (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
     else
         TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
-
-saveFormat :: TextFormat -> TextFormat
-saveFormat te = do
-    let word = (currWord te)
-    let wLength = (currWordLength te)
-    let formatted = (textContents te)
-    let fLength = (currTextLength te)
-    let toFormat = (textToFormat te)
-    let totalParsed = (totalCharsParsed te)
-    let cursor = (currCursorPos te)
-    let isNotPrinted = (cursorToPrint te)
-    let lb = (lbPos te)
-    let lbNotPrinted = (lbToPrint te)
-    let rb = (rbPos te)
-    let rbNotPrinted = (rbToPrint te)
-    if (toFormat /= "") then do
-        -- Get next character
-        let newChar = take 1 toFormat
-        let newWLength = wLength + 1
-        -- If a space, it means the word is finished
-        if (newChar == " ") then
-            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) (fLength + newWLength) (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-        else if (newChar == "\n") then
-            saveFormat (TextFormat "" 0 (formatted ++ word ++ newChar) 0 (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-        else
-            -- add new character to word, keep going
-            saveFormat (TextFormat (word ++ newChar) newWLength formatted fLength (tail toFormat) (totalParsed + 1) cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted)
-    else
-        TextFormat "" 0 (formatted ++ word) fLength toFormat totalParsed cursor isNotPrinted lb lbNotPrinted rb rbNotPrinted
-
 
 wordLengths :: [String] -> [Int]
 wordLengths = map length
@@ -265,16 +269,16 @@ appendToLine line =
         >>= \nextchar ->
             if (nextchar == '\^X')
                 then pure line
-            else if (nextchar == '\^W') then 
+            else if (nextchar == '\^W') then
                 do
                     save (formatForSave line)
                     pure line
-            else if (nextchar == '\^O') then 
+            else if (nextchar == '\^O') then
                 do
                     newline <- load
                     printEditorView newline
                     appendToLine (pure newline)
-            else 
+            else
                 if (nextchar == '\n') then
                     -- If text is highlighted, replace it with this character
                     if (leftBrackPos line /= rightBrackPos line) then do
@@ -486,12 +490,12 @@ appendToLine line =
                                                                                         newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (pivot) (newCursorPos) (pivot))
                                                                                         printEditorView newline
                                                                                         appendToLine (pure newline)
-                                                                            else 
+                                                                            else
                                                                                 do
                                                                                     newline <- pure line
                                                                                     printEditorView newline
                                                                                     appendToLine (pure newline)
-                                                                else 
+                                                                else
                                                                     do
                                                                         newline <- pure line
                                                                         printEditorView newline
@@ -604,7 +608,7 @@ appendToLine line =
                         appendToLine (pure newline)
 
 checkCursorDelete :: Int -> Int
-checkCursorDelete cursor = 
+checkCursorDelete cursor =
     if (cursor == 0) then
         cursor
     else
@@ -612,7 +616,7 @@ checkCursorDelete cursor =
 
 -- Don't need now
 takeOffN :: Integer -> String -> String
-takeOffN toTakeOff afterCursor = 
+takeOffN toTakeOff afterCursor =
     if (toTakeOff == 0) then
         afterCursor
     else
@@ -621,8 +625,8 @@ takeOffN toTakeOff afterCursor =
 save :: String -> IO ()
 save line = do
     saveHandle <- getAndOpenFile "Save to: " WriteMode
-    let formattedText = line 
-        in 
+    let formattedText = line
+        in
             hPutStr saveHandle formattedText
     hClose saveHandle
     putStrLn ("saved")
@@ -656,9 +660,8 @@ getAndOpenFile prompt mode =
                     openFile name WriteMode)
 
 getnewInput :: IO Char
-getnewInput = do 
-    nextchar <- getChar
-    return nextchar
+getnewInput = do
+    getChar
 
 -- Don't need now
 appendNewLine :: String -> String -> String
