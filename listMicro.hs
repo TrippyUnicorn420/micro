@@ -3,8 +3,8 @@ import Text.Printf
 import System.IO
 import Control.Exception
 
- 
-data TELine = TELine 
+
+data TELine = TELine
     { contents :: String
     , cursorPos :: Int
     , charTotal :: Int
@@ -44,7 +44,7 @@ main = do
     putStrLn ("Welcome to Micro.\nCtrl+O: open a file\tCtrl+S: save\tCtrl+X: exit without saving")
     -- Intital Text editor, with only cursor at the start
     let currentLine = TELine "" 0 0 0 0 0
-        in do 
+        in do
             printEditorView currentLine
             editorView <- appendToLine (pure currentLine)
             printEditorView editorView
@@ -261,7 +261,7 @@ checkLineTotals total cursorPos line listLengths listStrs =
             else if (length listStrs > 1) then
                 line + 1
             -- If we are at the end of everything, then return this line
-            else 
+            else
                 line
         else
             checkLineTotals newTotal cursorPos (line + 1) (removeFirst listLengths) (removeFirst listStrs)
@@ -300,41 +300,32 @@ appendToLine line =
         >>= \nextchar ->
             if (nextchar == '\^X')
                 then pure line
-            else if (nextchar == '\^W') then 
-                do
+        
+            else if (nextchar == '\^W') then
+                do -- nothing after save
                     save (formatForSave line)
-                    pure line
-            else if (nextchar == '\^O') then 
+                    printLine line
+            else if (nextchar == '\^O') then
                 do
                     newline <- load
                     printEditorView newline
                     appendToLine (pure newline)
-            else 
+            else
                 if (nextchar == '\n') then
                     -- If text is highlighted, replace it with this character
                     if (leftBrackPos line /= rightBrackPos line) then do
-                        newline <- pure (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
                     else do
-                        newline <- pure (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
+                        printLine (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
                         --checkingPrintFormat(newline)
-                        printEditorView newline
-                        appendToLine (pure newline)
                 else if (nextchar == '\DEL') then -- for backspace
                     -- If text is highlighted, delete the highlighted section
                     if (leftBrackPos line /= rightBrackPos line) then do
-                        newline <- pure (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
                     else if ((cursorPos line) == 0) then do
-                        newline <- pure line
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine line
                     else do
-                        newline <- pure (TELine (removeCharLeft (contents line) (cursorPos line) (charTotal line)) (checkCursorDelete (cursorPos line)) ((charTotal line) - 1) (checkCursorDelete (cursorPos line)) (checkCursorDelete (cursorPos line)) (checkCursorDelete (cursorPos line)))
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine (TELine (removeCharLeft (contents line) (cursorPos line) (charTotal line)) (checkCursorDelete (cursorPos line)) ((charTotal line) - 1) (checkCursorDelete (cursorPos line)) (checkCursorDelete (cursorPos line)) (checkCursorDelete (cursorPos line)))
                 else if (nextchar == '\ESC') then
                     do
                         getnewInput
@@ -351,25 +342,17 @@ appendToLine line =
                                                     if (squigglechar == '~') then
                                                         -- If there is text highlighted, remove it
                                                         if (leftBrackPos line /= rightBrackPos line) then do
-                                                            newline <- pure (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
-                                                            printEditorView newline
-                                                            appendToLine (pure newline)
+                                                            printLine (TELine (deleteHighlight (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) (leftBrackPos line) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line))) (leftBrackPos line) (leftBrackPos line) (leftBrackPos line))
                                                         -- If nothing after cursor, don't do anything
                                                         else if ((cursorPos line) == (charTotal line)) then do
-                                                            newline <- pure line
-                                                            printEditorView newline
-                                                            appendToLine (pure newline)
+                                                            printLine line
                                                         -- If something after cursor, delete first char after the cursor
                                                         else do
-                                                            newline <- pure (TELine (removeCharRight (contents line) (cursorPos line) (charTotal line)) (cursorPos line) ((charTotal line) - 1) (cursorPos line) (cursorPos line) (cursorPos line))
-                                                            printEditorView newline
-                                                            appendToLine (pure newline)
+                                                            printLine (TELine (removeCharRight (contents line) (cursorPos line) (charTotal line)) (cursorPos line) ((charTotal line) - 1) (cursorPos line) (cursorPos line) (cursorPos line))
                                                     -- Weird keypress - don't do anything
                                                     else
                                                         do
-                                                            newline <- pure (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) (cursorPos line) (cursorPos line) (cursorPos line))
-                                                            printEditorView newline
-                                                            appendToLine (pure newline)
+                                                            printLine (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) (cursorPos line) (cursorPos line) (cursorPos line))
                                         else if (numberchar == '1') then
                                             do
                                                 getnewInput
@@ -387,56 +370,37 @@ appendToLine line =
                                                                                 do
                                                                                     -- If there is nothing more to the right, do nothing
                                                                                     if ((cursorPos line) == (charTotal line)) then do
-                                                                                        newline <- pure line
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine line
                                                                                     -- If highlight is getting larger ([]| to [.....]|)
                                                                                     else if ((pivotHighlight line) == (leftBrackPos line) && (pivotHighlight line) == (rightBrackPos line)) then do
-                                                                                        newline <- pure (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) + 1) (pivotHighlight line))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) + 1) (pivotHighlight line))
                                                                                     else if ((pivotHighlight line) < (rightBrackPos line)) then do
-                                                                                        newline <- pure (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) + 1) (pivotHighlight line))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) + 1) (pivotHighlight line))
                                                                                     -- If highlight is getting smaller ([|....] to [|])
                                                                                     else do
-                                                                                        newline <- pure (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line + 1)) (rightBrackPos line) (pivotHighlight line))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((leftBrackPos line + 1)) (rightBrackPos line) (pivotHighlight line))
                                                                             else if (shiftarrow == 'D') then do
                                                                                 -- If there is nothing on the left, do nothing
                                                                                 if (cursorPos line == 0) then
-                                                                                    do
-                                                                                    newline <- pure line
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
+                                                                                    printLine line
                                                                                 -- If highlight is getting bigger ([|] to [|.....])
                                                                                 else if ((pivotHighlight line) == (leftBrackPos line) && (pivotHighlight line) == (rightBrackPos line)) then do
-                                                                                    newline <- pure (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line) - 1) (rightBrackPos line) (pivotHighlight line))
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
+                                                                                    printLine (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line) - 1) (rightBrackPos line) (pivotHighlight line))
                                                                                 else if ((pivotHighlight line) > (leftBrackPos line)) then do
-                                                                                    newline <- pure (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line) - 1) (rightBrackPos line) (pivotHighlight line))
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
+                                                                                    printLine (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line) - 1) (rightBrackPos line) (pivotHighlight line))
                                                                                 -- If highlight is getting smaller ([....]| to []|)
                                                                                 else do
-                                                                                    newline <- pure (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) - 1) (pivotHighlight line))
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
+                                                                                    printLine (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((leftBrackPos line)) ((rightBrackPos line) - 1) (pivotHighlight line))
                                                                             else if (shiftarrow == 'A') then do
                                                                                 let oldCursorPos = (cursorPos line)
                                                                                 -- Get formatted string
-                                                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0)) 
+                                                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))
                                                                                 let listLen = wordLengths listLine
                                                                                 -- Find the line that cursor is currently on
                                                                                 let currLine = getCurrLine oldCursorPos listLine listLen
                                                                                 -- If line 0, don't do anything
                                                                                 if (currLine == 0) then do
-                                                                                    newline <- pure line
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
+                                                                                    printLine line
                                                                                 -- Else, find the new cursor position
                                                                                 else do
                                                                                     -- Find column that cursor is currently on
@@ -448,47 +412,26 @@ appendToLine line =
                                                                                     let rb = rightBrackPos line
                                                                                     -- If just starting highlight, move left bracket only with new cursor (get bigger)
                                                                                     if (pivot == lb && pivot == rb) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
-                                                                                        --checkingPrintTELine newline
-                                                                                        --checkingPrintFormat newline
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
                                                                                     -- If left bracket is already moving with cursor, then keep moving it (get bigger)
                                                                                     else if (lb < pivot) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
-                                                                                        --checkingPrintTELine newline
-                                                                                        --checkingPrintFormat newline
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
                                                                                     -- If we are reducing the highlight section (get smaller) but highlight section is not yet fully removed
                                                                                     else if (lb == pivot && newCursorPos >= pivot) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
-                                                                                        --checkingPrintTELine newline
-                                                                                        --checkingPrintFormat newline
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
                                                                                     -- Else we are highlighting from one direction to another (the brackets have to change)
                                                                                     else do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (pivot) (pivot))
-                                                                                        --checkingPrintTELine newline
-                                                                                        --checkingPrintFormat newline
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (pivot) (pivot))
                                                                             else if (shiftarrow == 'B') then do
                                                                                 let oldCursorPos = (cursorPos line)
                                                                                 -- Get formatted string
-                                                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0)) 
+                                                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))
                                                                                 let listLen = wordLengths listLine
                                                                                 -- Find the line that cursor is currently on
                                                                                 let currLine = getCurrLine oldCursorPos listLine listLen
                                                                                 -- If last line, don't do anything
                                                                                 if (currLine == ((length listLen) - 1)) then do
-                                                                                    do
-                                                                                        newline <- pure line
-                                                                                        -- checkingPrintTELine newline
-                                                                                        -- checkingPrintFormat newline
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                    printLine line
                                                                                 -- Else move down a line
                                                                                 else do
                                                                                     -- Find column that cursor is currently on
@@ -500,53 +443,34 @@ appendToLine line =
                                                                                     let rb = rightBrackPos line
                                                                                     -- Starting new highlight - getting larger to the right
                                                                                     if (pivot == lb && pivot == rb) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
                                                                                     -- If already highlighting to right, just get bigger
                                                                                     else if (rb > pivot) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (lb) (newCursorPos) (pivot))
                                                                                     -- If reducing the highlighting (from left to pivot), but not yet reached pivot yet
                                                                                     else if (rb == pivot && newCursorPos <= pivot) then do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (rb) (pivot))
                                                                                     -- If pass the pivot, from left, to right, getting slightly bigger on right
                                                                                     else do
-                                                                                        newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (pivot) (newCursorPos) (pivot))
-                                                                                        printEditorView newline
-                                                                                        appendToLine (pure newline)
-                                                                            else 
-                                                                                do
-                                                                                    newline <- pure line
-                                                                                    printEditorView newline
-                                                                                    appendToLine (pure newline)
-                                                                else 
-                                                                    do
-                                                                        newline <- pure line
-                                                                        printEditorView newline
-                                                                        appendToLine (pure newline)
+                                                                                        printLine (TELine (contents line) (newCursorPos) (charTotal line) (pivot) (newCursorPos) (pivot))
+                                                                            else
+                                                                                printLine line
+                                                                else
+                                                                    printLine line
                                                     else
-                                                        do
-                                                            newline <- pure line
-                                                            printEditorView newline
-                                                            appendToLine (pure newline)
+                                                        printLine line
                                         -- IF up arrow is pressed
                                         else if (numberchar == 'A') then
                                             do
                                                 let oldCursorPos = (cursorPos line)
                                                 -- Get formatted string
-                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))   
+                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))
                                                 let listLen = wordLengths listLine
                                                 -- Find the line that cursor is currently on
                                                 let currLine = getCurrLine oldCursorPos listLine listLen
                                                 -- If line 0, don't do anything
                                                 if (currLine == 0) then do
-                                                    newline <- pure line
-                                                    printEditorView newline
-                                                    appendToLine (pure newline)
+                                                    printLine line
                                                 -- Else move up a line
                                                 else do
                                                     -- Find column that cursor is currently on
@@ -567,19 +491,13 @@ appendToLine line =
                                             do
                                                 let oldCursorPos = (cursorPos line)
                                                 -- Get formatted list of lines
-                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))  
+                                                let listLine = udtextContents (upDownFormatting (UDTextFormat "" 0 "" [] 0 (contents line) 0))
                                                 let listLen = wordLengths listLine
                                                 -- Find the line that cursor is currently on
                                                 let currLine = getCurrLine oldCursorPos listLine listLen
                                                 -- If last line, don't do anything
                                                 if (currLine == ((length listLen) - 1)) then do
-                                                    newline <- pure line
-                                                    printEditorView newline
-                                                    --print (listLine)
-                                                    --print (listLen)
-                                                    --checkingPrintTELine newline
-                                                    --checkingPrintFormat newline
-                                                    appendToLine (pure newline)
+                                                    printLine line
                                                 -- Else move down a line
                                                 else do
                                                     -- Find column that cursor is currently on
@@ -587,84 +505,58 @@ appendToLine line =
                                                     -- Get new cursor position
                                                     let newCursorPos = min (charTotal line) (downCursorPos currLine currColumn listLen)
                                                     -- Find number of characters to move to stringAfterCursor
-                                                    newline <- pure (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (newCursorPos) (newCursorPos))
-                                                    printEditorView newline
-                                                    --print (listLine)
-                                                    --print (listLen)
-                                                    --checkingPrintTELine newline
-                                                    --checkingPrintFormat newline
-                                                    appendToLine (pure newline)
+                                                    printLine (TELine (contents line) (newCursorPos) (charTotal line) (newCursorPos) (newCursorPos) (newCursorPos))
                                         else if (numberchar == 'D') then
                                             if (cursorPos line == 0) then do
-                                                newline <- pure line
-                                                printEditorView newline
-                                                appendToLine (pure newline)
+                                                printLine line
                                             else do
-                                                newline <- pure (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((cursorPos line) - 1) ((cursorPos line) - 1) ((cursorPos line) - 1))
-                                                printEditorView newline
-                                                appendToLine (pure newline)
+                                                printLine (TELine (contents line) ((cursorPos line) - 1) (charTotal line) ((cursorPos line) - 1) ((cursorPos line) - 1) ((cursorPos line) - 1))
                                         else if (numberchar == 'C') then do
                                             if ((cursorPos line) == (charTotal line)) then do
-                                                newline <- pure line
-                                                printEditorView newline
-                                                appendToLine (pure newline)
+                                                printLine line
                                             else do
-                                                newline <- pure (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
-                                                printEditorView newline
-                                                appendToLine (pure newline)
+                                                printLine (TELine (contents line) ((cursorPos line) + 1) (charTotal line) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
                                         else
                                             do
-                                                newline <- pure line
-                                                printEditorView newline
-                                                appendToLine (pure newline)
+                                                printLine line
                             else
-                                do
-                                    newline <- pure line
-                                    printEditorView newline
-                                    appendToLine (pure newline)
+                                printLine line
                 else
                     -- If text is highlighted, replace it with this character
                     if (leftBrackPos line /= rightBrackPos line) then do
-                        newline <- pure (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine (TELine (replaceHighlight nextchar (contents line) (leftBrackPos line) (rightBrackPos line) (charTotal line)) ((leftBrackPos line)+1) ((charTotal line) - ((rightBrackPos line) - (leftBrackPos line)) + 1) ((leftBrackPos line)+1) ((leftBrackPos line)+1) ((leftBrackPos line)+1))
                     else do
-                        newline <- pure (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
-                        printEditorView newline
-                        appendToLine (pure newline)
+                        printLine (TELine (addChar nextchar (contents line) (cursorPos line) (charTotal line)) ((cursorPos line) + 1) ((charTotal line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1) ((cursorPos line) + 1))
+
+
+-- if we need to do something
+printLine :: TELine -> IO TELine
+printLine line = do
+    newline <- pure line
+    printEditorView newline
+    appendToLine (pure newline)
 
 checkCursorDelete :: Int -> Int
-checkCursorDelete cursor = 
+checkCursorDelete cursor =
     if (cursor == 0) then
         cursor
     else
         cursor - 1
 
--- Don't need now
-takeOffN :: Integer -> String -> String
-takeOffN toTakeOff afterCursor = 
-    if (toTakeOff == 0) then
-        afterCursor
-    else
-        takeOffN (toTakeOff - 1) (tail afterCursor)
 
+-- creates file handle and writes to the handle to save the file
 save :: String -> IO ()
 save line = do
-    saveHandle <- getAndOpenFile "Save to: " WriteMode
-    let formattedText = line 
-        in 
+    saveHandle <- getAndOpenFile "\nSave to: " WriteMode
+    let formattedText = line
+        in
             hPutStr saveHandle formattedText
     hClose saveHandle
-    putStrLn ("saved")
+    putStrLn ("\nsaved - press anything to continue")
 
--- Don't need now
-totalTELineChars :: Integer -> String -> Integer
-totalTELineChars total str =
-    if (str == "") then
-        total
-    else
-        totalTELineChars (total + 1) (tail str)
 
+-- creates file handle so that it can load from a file
+-- crashes if it can't find the file
 load :: IO TELine
 load = do
     loadHandle <- getAndOpenFile "Enter file name: " ReadMode
@@ -686,24 +578,9 @@ getAndOpenFile prompt mode =
                     openFile name WriteMode)
 
 getnewInput :: IO Char
-getnewInput = do 
+getnewInput = do
     nextchar <- getChar
     return nextchar
 
--- Don't need now
-appendNewLine :: String -> String -> String
-appendNewLine newlinestr line = line ++ newlinestr
-
--- Don't need now
-appendChar :: Char -> String -> String
-appendChar nextchar line = line ++ charToString nextchar
-
 charToString :: Char -> String
 charToString = (:[])
-
--- Don't need now
--- trying to make backspace work
-shave :: [a] -> [a]
-shave [] = []
-shave [h]    = []
-shave (h:t)  =[h]++shave t
